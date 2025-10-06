@@ -1,9 +1,15 @@
-import sys
-import numpy
 import matplotlib.pyplot as plotlib
+import numpy
+import sys
+import os
 
-# Change the list of target searches
-sys.path.append('/home/imasada/code/turboshits/classes/')
+# Change the current working directory to the file location
+filepath = os.path.abspath(__file__)
+directory = os.path.dirname(filepath)
+os.chdir(directory)
+
+# Add custom classes to search locations
+sys.path.append(r'..\classes')
 
 # Import the Position Vector class
 from Point import Point

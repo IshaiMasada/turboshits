@@ -1,13 +1,9 @@
 from scipy.interpolate import CubicSpline
+import matplotlib.pyplot as plt
 import numpy, csv, sys, math, os
 
-# Change the current working directory to the file location
-filepath = os.path.abspath(__file__)
-directory = os.path.dirname(filepath)
-os.chdir(directory)
-
-# Add custom classes to search locations
-sys.path.append(r'..\classes')
+# Change the list of target searches
+sys.path.insert(0, r'C:\Users\ipmas\OneDrive - Embry-Riddle Aeronautical University\custom_curves\classes')
 
 # Import the Position Vector class
 from Point import Point
@@ -40,24 +36,24 @@ def write_coords(filename, coordinates):
 
             coord_writer.writerow([point[0], point[1] + offset, point[2]])
 
-def load_data(span, data):
+def load_data(span):
     # All points within airfoil section
     #section_points = [(float(point.strip().split()[0]), float(point.strip().split()[1]), float(point.strip().split()[2])) for point in raw_data[span].splitlines()]
-    section_points = [(float(point.strip().split()[1]), float(point.strip().split()[2])) for point in data[span].splitlines()]
+    section_points = [(float(point.strip().split()[1]), float(point.strip().split()[2])) for point in raw_data[span].splitlines()]
 
     # Span Position
-    span_x = int(float(data[span].splitlines()[0].split()[0]))
+    span_x = int(float(raw_data[span].splitlines()[0].split()[0]))
 
     # Suction Side Points
     #suction_side_points = [(float(point.strip().split()[0]), float(point.strip().split()[1]), float(point.strip().split()[2])) for point in raw_data[span].split('TE')[0].splitlines()]
-    pressure_side_points = [(float(point.strip().split()[1]), float(point.strip().split()[2])) for point in data[span].split('TE')[0].splitlines()]
+    pressure_side_points = [(float(point.strip().split()[1]), float(point.strip().split()[2])) for point in raw_data[span].split('TE')[0].splitlines()]
 
     # Pressure Side Points
-    suction_side_points = data[span].split('TE')[1].splitlines()
+    suction_side_points = raw_data[span].split('TE')[1].splitlines()
     suction_side_points.pop(0)
     suction_side_points = [(float(point.strip().split()[1]), float(point.strip().split()[2])) for point in suction_side_points]
 
-    return span_x, suction_side_points, pressure_side_points
+    return section_points, span_x, suction_side_points, pressure_side_points
 
 def get_position(chord_position, span_position, pressure_suction_choice):
     match pressure_suction_choice:
@@ -79,47 +75,43 @@ def get_position(chord_position, span_position, pressure_suction_choice):
             span1_section = CubicSpline(parameter_1, suction_1)
             final_point = span1_section(chord_position)
 
-    desired_x = (span_0 + span_position*(span_1 - span_0))
+    desired_x = (span_0x + span_position*(span_1x - span_0x))
     initial_point = Point(desired_x, initial_point[0], initial_point[1]).scalar_mul(0.001)
     final_point = Point(desired_x, final_point[0], final_point[1]).scalar_mul(0.001)
     section_point = initial_point + (final_point - initial_point).scalar_mul(span_position)
 
     return section_point
 
+# Read in data
+with open('data/heh.txt', 'r') as f:
+    raw_data = f.read().split('\n\n')
 
-# Read in user input
-with open(r"data/input positions.csv", 'r') as f:
-    user_input = f.read().splitlines()
-    user_input.pop(0)
+    section_0, span_0x, suction_0, pressure_0 = load_data(0)
+    #span_025, span_025x, suction_025, pressure_025 = load_data(1)
+    #span_05, span_05x, suction_05, pressure_05 = load_data(2)
+    #span_075, span_075x, suction_075, pressure_075 = load_data(3)
+    section_1, span_1x, suction_1, pressure_1 = load_data(4)
+
+# User Input
+span_position = 0.5
+chord_position = 0.5
+ps_ss = 'ps'
+
+with open('data/input positions.csv', 'r') as f:
+    raw_data = f.read().splitlines()
+    raw_data.pop(0)
 
 points = []
 
-for row in user_input:
-    args = row.split(',')
+for group in raw_data:
+    elements = group.split(',')
 
-    span_position = float(args[0])
-    chord_position = float(args[1])
-    ps_ss = args[2]
-    rotor_stator = args[3]
-
-    match rotor_stator:
-        case "rotor":
-            # Read in rotor data
-            with open('data/rotor.txt', 'r') as f:
-                raw_data = f.read().split('\n\n')
-
-                span_0, suction_0, pressure_0 = load_data(0, raw_data)
-                span_1, suction_1, pressure_1 = load_data(4, raw_data)
-
-        case "stator":
-            # Read in stator data
-            with open('data/stator.txt', 'r') as f:
-                raw_data = f.read().split('\n\n')
-
-                span_0, suction_0, pressure_0 = load_data(0, raw_data)
-                span_1, suction_1, pressure_1 = load_data(4, raw_data)
+    span_position = float(elements[0])
+    chord_position = float(elements[1])
+    ps_ss = elements[2]
 
     injection_location = get_position(chord_position, span_position, ps_ss)
     points.append([injection_location.x_coord, injection_location.y_coord, injection_location.z_coord])
+
 
 write_coords('Injection Locations.csv', points) 

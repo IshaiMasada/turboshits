@@ -24,6 +24,9 @@ class BSpline():
         self.parameters = numpy.linspace(min_parameter, max_parameter, num_points)
 
     def get_positions(self):
+        '''
+        Returns the positions of each point based on the control points
+        '''
         def basis_function(parameter, degree, i):
             # Check for curve simplicity
             if degree == 0:
